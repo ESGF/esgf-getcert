@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+
+<project name="getcert" default="dist" basedir=".">
+  
+  <property name="module" value="getcert"/>
+  <property name="organization" value="Earth Systems Grid Federation"/>
+
+  <property file="${user.home}/.${module}.ant.properties"/>
+  <echo message="user property file ${user.home}/.${module}.ant.properties"/>
+  
+  
+  
+  <description>
+    Provides a client-side implementation of the getcert GET protocol.
+  </description>
+  
+  <property name="src" location="src"/> 
+  <property name="lib" location="lib"/>
+  <property name="build" location="build"/>
+  <property name="dist" location="dist"/>
+  <property name="jar" location="${dist}/getcert.jar"/>
+  <property name="basedir" value="."/>
+  <property name="main_class" value="esg.security.myproxy.MyProxyConsole"/>
+
+  <property file="build.properties"/>
+  
+  <target name="init">
+    <mkdir dir="${build}"/>
+    <mkdir dir="${dist}"/>
+  </target>
+  
+  <path id="classpath">
+    <fileset dir="${lib}">
+      <include name="*.jar"/>
+    </fileset>
+  </path>
+  
+  <target name="compile" description="compile the source " depends="init">
+    <javac srcdir="${src}" classpathref="classpath" destdir="${build}" source="1.5"/>
+  </target>
+  
+  <target name="dist" depends="compile" description="(Creates the jar file distribution of this project)">
+    <delete verbose="false">
+      <fileset file="${jar}" />
+    </delete>
+    <echo message="Creating executable Jar ==> ${jar}"/>
+    
+    <jar destfile="${build}/temp.jar" filesetmanifest="skip">
+        <fileset dir="${build}"
+                 includes="esg/**,**/*.properties,**/*filter-web.xml"
+                 excludes="**/test/**,**/test-instrumented/**"/>
+        <manifest>
+          <attribute name="Organization" value="${organization}"/>
+          <attribute name="Author"       value="${author}"/>
+          <attribute name="Version"      value="${version_num}"/>
+      <attribute name="Branch"       value="${branch}"/>
+      <attribute name="Commit"       value="${commit}"/>
+          <attribute name="Release-Name" value="${release_name}"/>
+          <attribute name="Main-Class"   value="${main_class}"/>
+        </manifest>	
+      <zipgroupfileset dir="${lib}" includes="*.jar"/>
+    </jar>
+    <zip basedir="${build}" destfile="${jar}">
+      <exclude name="temp.jar"/>
+      <zipfileset src="${build}/temp.jar" excludes="META-INF/*.SF, META-INF/*.DSA, META-INF/*.RSA"/>
+    </zip>
+    <delete file="${build}/temp.jar"/>
+  </target>
+  
+  <target name="signed_dist" depends="dist" description="Creates Distribution AND sign it">
+    <echo message="alias    ---- ${signing_alias}"/>
+    <echo message="keystore ---- ${keystore}"/>
+    <echo message="storepass --- ********"/>
+    <echo message="jar      ---- ${jar}"/>
+    <signjar jar="${jar}" alias="${signing_alias}" keystore="${keystore}" storepass="${storepass}"/>
+  </target>
+  
+  <target name="clean" description="clean up">
+    <!-- Delete the ${build} and ${dist} directory trees -->
+    <delete dir="${build}"/>
+    <delete dir="${dist}"/>
+  </target>
+  
+</project>

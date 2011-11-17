@@ -1,0 +1,16 @@
+/***************************************************************************
+*       Project: Earth Systems Grid Federation (ESGF) Software             *
+***************************************************************************/
+
+The file here is an example of the file that is loaded by the
+build.xml file.  In this file put the property=value of any properties
+that you wish to use or *override* in the build.xml.
+
+Copy this example file - MyProxyLogon.ant.properties to your home
+directory as "~/.MyProxyLogon.ant.properties". Don't forget the
+preceding "." dot.
+
+For the ant target signed_dist, please replace the values
+foo,bar,alpha with proper values.
+
+:-).
