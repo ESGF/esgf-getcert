@@ -38,7 +38,7 @@ public class MyProxyConsole {
 		// setup arguments
 		Argument oOid = arg
 				.setOption(
-						"--oid",
+						"--openid,--oid",
 						"OpenID endpoint from where myproxy information can be gathered.",
 						true);
 		Argument oUser = arg
@@ -54,6 +54,11 @@ public class MyProxyConsole {
 		// simplify for the common user, either both or none.
 		// Argument oBoot = arg.setOption("-b", "Bootstrap. Don't check CAs.");
 		Argument oTrust = arg.setOption("-T", "Gather server Trustroots.");
+		Argument oTime = arg
+				.setOption(
+						"-t",
+						"Requested Lifetime in hours (the server normally limit the certificate duration)",
+						true);
 		Argument oDebug = arg.setOption("-d", "Turn debugging info on.");
 		Argument oHelp = arg.setOption("-h,--help",
 				"Displays command usage text and exits.");
@@ -176,10 +181,19 @@ public class MyProxyConsole {
 			conn.setTrustRoots(true);
 			conn.setBootStrap(true);
 		}
+		
 		// if (parsedArgs.contains(oBoot)) conn.setBootStrap(true);
 		if (oUser.getValue() != null)
 			conn.setUsername(oUser.getValue());
-
+		if (oTime.getValue() != null) {
+			try {
+				int time = Integer.parseInt(oTime.getValue());
+				conn.setLifetime(time);
+			} catch (NumberFormatException e) {
+				end(String.format("Cannot parse %s as a valid amount of hours.", oTime.getValue()));
+			}
+		}
+			
 		// at this place we should already have all required information. Check
 		// it
 		if (conn.getUsername() == null)

@@ -53,12 +53,12 @@ import org.w3c.dom.Document;
  * and generate a getInstance method for retrieving unmodifiable instances. 
  */
 public class GSSICredentialConnection {
-    private static final SSLSocketFactory factory;
-	private static final HostnameVerifier hostname_verifier;
+//    private static final SSLSocketFactory factory;
+//	private static final HostnameVerifier hostname_verifier;
     
 	//craete special SSL context checker (now bootstraping it)
 	static {
-		SSLContext sc = null;
+		/*SSLContext sc = null;
 
 		// initialize Certificate checking
 		try {
@@ -94,7 +94,7 @@ public class GSSICredentialConnection {
 				return true;
 			}
 
-		};
+		};*/
 	}
 	
     private boolean debug = false;
@@ -148,6 +148,8 @@ public class GSSICredentialConnection {
     private GSSCredential credential;
 
 	private String openId;
+	//defaults to maximum allowed in the CMIP5 federation
+	private int lifetime = 72 * 60 * 60;
 
    
 
@@ -167,6 +169,18 @@ public class GSSICredentialConnection {
 	}
 	private String getOpenId() {
 		return openId;
+	}
+	
+	private int getLifetime() {
+		return this.lifetime;
+	}
+	/**
+	 * @param time in hours
+	 */
+	public void setLifetime(int time) {
+		//we issue seconds though
+		this.lifetime = time * 60 * 60;
+		
 	}
 
 	public void setCADir(String value) {
@@ -206,10 +220,10 @@ public class GSSICredentialConnection {
         
         // try to get the page (IOException if it fails)
         URLConnection conn = url.openConnection();
-        if (conn instanceof HttpsURLConnection) {
-        	((HttpsURLConnection)conn).setSSLSocketFactory(factory);
-        	((HttpsURLConnection)conn).setHostnameVerifier(hostname_verifier);
-        }
+//        if (conn instanceof HttpsURLConnection) {
+//        	((HttpsURLConnection)conn).setSSLSocketFactory(factory);
+//        	((HttpsURLConnection)conn).setHostnameVerifier(hostname_verifier);
+//        }
         InputStream in = conn.getInputStream();
 
         try {
@@ -260,7 +274,7 @@ public class GSSICredentialConnection {
             getRequest.setWantTrustroots(trustRoots);
             
             //this is the maximum we are allowing.
-            getRequest.setLifetime(72 * 60 * 60);
+            getRequest.setLifetime(getLifetime());
 
             // setup myproxy
             myProxy = new MyProxy(host, port);
@@ -460,6 +474,7 @@ public class GSSICredentialConnection {
 			e.printStackTrace();
 		}
 	}
+
 
 
 
