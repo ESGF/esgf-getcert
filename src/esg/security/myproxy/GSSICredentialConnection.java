@@ -137,7 +137,7 @@ public class GSSICredentialConnection {
 	private String username;
 	private String password;
 	private String host;
-	private int port = 7512;	//default
+	private int port = 0;
 	private String caDirectory;
 
 

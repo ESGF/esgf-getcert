@@ -134,29 +134,7 @@ public class MyProxyConsole {
 		// we must pass this as a java property instead of an environment
 		// variable
 		System.setProperty(X509_CERT_DIR, conn.getCADir());
-
-		// set the rest (overwrites oid if provided)
-		if (oPort.getValue() != null) {
-			try {
-				conn.setPort(Integer.parseInt(oPort.getValue()));
-			} catch (NumberFormatException e) {
-				end("Not a valid port number: " + oPort.getValue());
-			}
-		}
-
-		// use openid to find values
-		if (oOid.getValue() != null) {
-			String oid = oOid.getValue();
-			try {
-				conn.setupFromOpenID(oid);
-			} catch (Exception e) {
-				end("Could not parse openID " + oOid.getValue() + "\n"
-						+ e.getMessage());
-			}
-		}
-
-		if (oHost.getValue() != null)
-			conn.setHost(oHost.getValue());
+		
 		// this is a simplification for the end user
 		if (parsedArgs.contains(oTrust)) {
 			/* unconditionally delete trustRootPath if it exists */
@@ -181,6 +159,51 @@ public class MyProxyConsole {
 			conn.setTrustRoots(true);
 			conn.setBootStrap(true);
 		}
+
+		// use openid to find values
+		if (oOid.getValue() != null) {
+			String oid = oOid.getValue();
+			try {
+				conn.setupFromOpenID(oid);
+			} catch (Exception e) {
+				end("Could not parse openID " + oOid.getValue() + "\n"
+						+ e.getMessage());
+			}
+		}
+
+		if (oHost.getValue() != null){
+			// if host has been obtained by --openid option or by property 
+			// file then only overwrite Host if it is a given option
+			if (parsedArgs.contains(oOid) || conn.getHost()!=null) {
+				if(parsedArgs.contains(oHost)){
+					conn.setHost(oHost.getValue());
+				}
+			}else{
+				conn.setHost(oHost.getValue());
+			}
+		}
+		
+		// set the rest (overwrites oid if provided)
+		if (oPort.getValue() != null) {
+			// if port has been obtained by --openid option or by property 
+			// file then only overwrite port if it is a given option
+			if (parsedArgs.contains(oOid)|| conn.getPort()!=0) {
+				if(parsedArgs.contains(oPort)){
+					try {
+						conn.setPort(Integer.parseInt(oPort.getValue()));
+					} catch (NumberFormatException e) {
+						end("Not a valid port number: " + oPort.getValue());
+					}
+				}
+			}else{
+				try {
+					conn.setPort(Integer.parseInt(oPort.getValue()));
+				} catch (NumberFormatException e) {
+					end("Not a valid port number: " + oPort.getValue());
+				}
+			}
+			
+		}
 		
 		// if (parsedArgs.contains(oBoot)) conn.setBootStrap(true);
 		if (oUser.getValue() != null)
@@ -200,8 +223,10 @@ public class MyProxyConsole {
 			end("Username is missing.");
 		if (conn.getHost() == null)
 			end("Host server is missing.");
-		if (conn.getPort() == 0)
-			end("Port number is missing.");
+		if (conn.getPort() == 0){
+			//default
+			conn.setPort(7512);
+		}
 		if (conn.getCADir() == null
 				|| !new File(conn.getCADir()).getParentFile().exists())
 			end("CA Directory " + conn.getCADir() + " is missing.");
