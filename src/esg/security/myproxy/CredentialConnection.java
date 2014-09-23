@@ -11,20 +11,15 @@ import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.security.SecureRandom;
+import java.security.GeneralSecurityException;
+import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
@@ -37,70 +32,81 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathFactory;
 
-import org.globus.myproxy.GetParams;
-import org.globus.myproxy.MyProxy;
-import org.globus.myproxy.MyProxyException;
-import org.globus.util.Util;
-import org.gridforum.jgss.ExtendedGSSCredential;
-import org.ietf.jgss.GSSCredential;
-import org.ietf.jgss.GSSException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.w3c.dom.Document;
 
+import edu.uiuc.ncsa.MyProxy.MyProxyLogon;
+
+
+
 /**
- * @author Estani
- * wraps the globus myProxy. Everything here is cached, so it is intended to
- * be used only once. It might be desired afterward, to set the constructor to private
- * and generate a getInstance method for retrieving unmodifiable instances. 
+ * Wraps the Wraps the edu.uiuc.ncsa.myproxy.MyProxyLogon. Everything here is cached, 
+ * so it is intended to be used only once.
+ * @author  Estani
+ * @author  Karem Terry
  */
 public class CredentialConnection {
-//    private static final SSLSocketFactory factory;
-//	private static final HostnameVerifier hostname_verifier;
-    
-	//craete special SSL context checker (now bootstraping it)
-	static {
-		/*SSLContext sc = null;
-
-		// initialize Certificate checking
-		try {
-			// create an empty ssl context (we can change this to suit our
-			// needs)
-			sc = SSLContext.getInstance("SSL");
-			sc.init(null, new TrustManager[] { new X509TrustManager() {
-				public X509Certificate[] getAcceptedIssuers() {
-					return null;
-				}
-
-				public void checkClientTrusted(X509Certificate[] certs,
-						String authType) {
-				}
-
-				public void checkServerTrusted(X509Certificate[] certs,
-						String authType) {
-					System.err.println("Connecting to: "
-							+ certs[0].getSubjectDN().getName());
-				}
-			} }, new SecureRandom());
-		} catch (Exception e) {
-			System.err
-					.println("Can't initialize SSL factory. The current JVM is not supported.");
-			e.printStackTrace();
-			System.exit(-1);
-		}
-		factory = sc.getSocketFactory();
-		hostname_verifier = new HostnameVerifier() {
-			public boolean verify(String hostname, SSLSession session) {
-				// this gets called iff there's a certificate DN and
-				// hostname mismatch
-				return true;
-			}
-
-		};*/
-	}
 	
+	/** Logger. */
+	private static Log LOG = LogFactory.getLog(CredentialConnection.class);
+	/** Singleton instance. */
+    private static CredentialConnection INSTANCE = null;
+    /** Pointer to the myproxy URI in the openID XRDS file. */
+    private static final String XPATH      = "//*[Type='urn:esg:security:myproxy-service']/URI";
+    
+	private boolean bootStrap = false;
+	private boolean trustRoots = false;
+	private String username;
+	private String password;
+	private String host;
+	private int port = 0;
+	private String caDirectory;
+    private MyProxyLogon myProxyLogon;
+	private String openId;
+	//defaults to maximum allowed in the CMIP5 federation
+	private int lifetime = 72 * 60 * 60;
     private boolean debug = false;
+	private Collection<X509Certificate> x509Certificates;
+	private PrivateKey privateKey;
+    
+    /**
+     * Get singleton instance of {@link CredentialConnection}. This instance is
+     * the only that exists.
+     * 
+     * @return the unique instance of {@link CredentialConnection}.
+     */
+    public static CredentialConnection getInstance() {
+        createInstance();
+        return INSTANCE;
+    }
+    
+    /**
+     * Create a thread-safe singleton.
+     */
+    private static void createInstance() {
 
-    public CredentialConnection(boolean debug) {
-		this.debug = debug;
+        LOG.debug("Checking if exist an instance of CredentialConnection");
+        // creating a thread-safe singleton
+        if (INSTANCE == null) {
+
+            // Only the synchronized block is accessed when the instance hasn't
+            // been created.
+            synchronized (CredentialConnection.class) {
+                // Inside the block it must check again that the instance has
+                // not been created.
+                if (INSTANCE == null) {
+                    LOG.debug("Creating new instance of CredentialConnection");
+                    INSTANCE = new CredentialConnection();
+                }
+            }
+        }
+    }
+
+    /**
+     * Constructor.
+     */
+    private CredentialConnection() {
 	}
     
     /**
@@ -128,31 +134,15 @@ public class CredentialConnection {
             throw new RuntimeException(e);
         }
     }
-
-    /** Pointer to the myproxy URI in the openID XRDS file. */
-    private static final String XPATH      = "//*[Type='urn:esg:security:myproxy-service']/URI";
-
-	private boolean bootStrap = false;
-	private boolean trustRoots = false;
-	private String username;
-	private String password;
-	private String host;
-	private int port = 0;
-	private String caDirectory;
-
-
-    private GetParams getRequest;
-
-    private MyProxy myProxy;
-
-    private GSSCredential credential;
-
-	private String openId;
-	//defaults to maximum allowed in the CMIP5 federation
-	private int lifetime = 72 * 60 * 60;
-
-   
-
+    
+	public boolean getDebug() {
+		return this.debug;
+	}
+	
+	public void setDebug(boolean debug){
+		this.debug = debug;
+	}
+    
     public String getUsername() {
         return username;
     }
@@ -265,162 +255,157 @@ public class CredentialConnection {
 		openId = oid;
 	}
 
-	private MyProxy getConnection() throws MyProxyException {
-        if (myProxy == null) {
-            // setup request params
-            getRequest = new GetParams();
-            getRequest.setUserName(username);
-            getRequest.setPassphrase(password);
-            getRequest.setWantTrustroots(trustRoots);
-            
-            //this is the maximum we are allowing.
-            getRequest.setLifetime(getLifetime());
-
-            // setup myproxy
-            myProxy = new MyProxy(host, port);
-
-        }
-
-        return myProxy;
-    }
-
     /**
-     * @return the GSSCredential behind the myproxy server using the parameters already set.
-     * @throws MyProxyException
+     * Configure {@link MyProxyLogon}
      */
-    public GSSCredential getCredential() throws MyProxyException {
-        if (credential == null) {
-            // setup myproxy
-            MyProxy myProxy = getConnection();
+	private MyProxyLogon getConnection() {
+		if (this.myProxyLogon == null) {
+			this.myProxyLogon = new MyProxyLogon();
+			this.myProxyLogon.setUsername(this.username);
+			this.myProxyLogon.setPassphrase(this.password);
+			this.myProxyLogon.setHost(this.host);
+			this.myProxyLogon.setPort(this.port);
+			this.myProxyLogon.setLifetime(this.lifetime);
+			this.myProxyLogon.requestTrustRoots(this.trustRoots);
+			LOG.debug("MyProxyLogon generated: + host" + this.host
+					+ " username:" + this.username + "pass: " + this.password
+					+ " port:" + this.port + "lifetime: " + this.lifetime
+					+ "trustRoots:" + this.trustRoots);
+		}
 
-            // if the directory pointed by X509_CERT_DIR exists, this won't work
-            if (bootStrap) myProxy.bootstrapTrust();
+		return this.myProxyLogon;
+	}
 
-            credential = myProxy.get(null, getRequest);
-            if (trustRoots)
-				try {
-					System.out.println("Writing trust roots to " + caDirectory);
-					myProxy.writeTrustRoots(caDirectory);
-				} catch (IOException e) {
-					System.err.println("Couldn't write certificates");
-					System.exit(1);
-				}
-        }
+	/**
+     * Retrieve credentials from the MyProxy server and writes the retrieved trust 
+     * roots to certificates directory if trustRoots are required setTrustRoots(true).
+     * 
+     * @throws IOException
+     * @throws GeneralSecurityException
+     */
+	public void getCredential() throws IOException, GeneralSecurityException {
+		LOG.debug("Generating MyProxyLogon object..");
+		MyProxyLogon myProxyLogon = getConnection();
 
-        return credential;
-    }
+		LOG.debug("Retrieving credentials from the MyProxy server..");
+		myProxyLogon.getCredentials();
+		LOG.debug("done!");
+
+		if (this.trustRoots) {
+			try {
+				LOG.info("Writing trust roots to " + this.caDirectory);
+				myProxyLogon.writeTrustRoots(this.caDirectory);
+				LOG.debug("Retrieved trust roots writed in " + this.caDirectory);
+			} catch (IOException e) {
+				LOG.error("Couldn't write certificates");
+				System.exit(1);
+			}
+		}
+
+		this.x509Certificates = this.myProxyLogon.getCertificates();
+		LOG.debug("X509Certificates:\n "
+				+ this.x509Certificates);
+		
+		this.privateKey = myProxyLogon.getPrivateKey();
+		LOG.debug("PrivateKey:" + this.privateKey.toString());
+	}
     
-    /**
+	/**
      * @param path to where the certificate will be saved.
-     * @throws MyProxyException If parameters are not properly set.
+     * @throws GeneralSecurityException If parameters are not properly set.
      * @throws IOException if retrieval/storage fails
      */
-    public void writeCertificate(String path) throws MyProxyException, IOException {
-        // create a file
-        new File(path).createNewFile();
-        
-        // set read only permissions
-        Util.setOwnerAccessOnly(path);
-        
-        OutputStream out = null;
-        out = new FileOutputStream(path);
-        
-        writeCertificate(out);
-    }
+	public void writeCertificate(String path) throws IOException,
+	GeneralSecurityException {
+		File file = new File(path);
+		file.createNewFile();
+
+		file.setReadable(true, true);
+		file.setWritable(true, true);
+
+		OutputStream out = null;
+		out = new FileOutputStream(path);
+
+		writeCertificate(out);
+	}
     
-    /**
+	 /**
      * @return the String representation of this certificate
-     * @throws MyProxyException If parameters are not properly set.
+     * @throws GeneralSecurityException If parameters are not properly set.
      * @throws IOException if retrieval/storage fails
      */
-    public String getCertificateAsString()  throws MyProxyException, IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        
-        writeCertificate(out);
-        
-        return out.toString();
-    }
+	public String getCertificateAsString() throws IOException,
+	GeneralSecurityException {
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+		writeCertificate(out);
+
+		return out.toString();
+	}
     
-    private void writeCertificate(OutputStream out) throws MyProxyException, IOException {
+	/**
+	 * Write certificate in .pem format into output stream
+	 * @param out output stream of bytes
+     * @throws GeneralSecurityException If parameters are not properly set.
+     * @throws IOException if retrieval/storage fails
+     */
+    private void writeCertificate(OutputStream out) throws IOException,
+    GeneralSecurityException {
+    	LOG.debug("Retrieving credentials from the MyProxy server...");
+    	getCredential();
 
-         GSSCredential certificate = getCredential();
-         if (certificate == null) {
-             throw new MyProxyException("Certificate gathering failed for inknown reasons.");
-         }
-         
-
-         try {
-
-             // write the contents
-             byte[] data =
-                     ((ExtendedGSSCredential) certificate).export(ExtendedGSSCredential.IMPEXP_OPAQUE);
-
-             out.write(data);
-         } catch (GSSException e) {
-            // This should never happen
-            throw new MyProxyException("Could not export certificate.", e);
-        } finally {
-             if (out != null) {
-                 try {
-                     out.close();
-                 } catch (Exception e) {
-                 }
-             }
-         }
+    	LOG.debug("Writing credentials in pem format...");
+    	PemUtil.writeCredentials(out, this.x509Certificates, this.privateKey);	
     }
     
     /**
      * Uses default location (X509_DERT_DIR) for storing trustroots.
-     * <p>
-     * see: {@link GSSICredentialConnection#writeTrustRoots(String)};
      */
-    public boolean writeTrustRoots() throws IOException, MyProxyException {
-        return writeTrustRoots(null);
-    }
+    public boolean writeTrustRoots() throws GeneralSecurityException, IOException {
+		return writeTrustRoots(null);
+	}
     
     /**
      * @param directory to where the trustroots will be stored
      * @return if the operation was successful
      * @throws IOException if the connection fails
-     * @throws MyProxyException if something is not properly setup
+     * @throws GeneralSecurityException if something is not properly setup
      */
-    public boolean writeTrustRoots(String directory) throws IOException,
-            MyProxyException {
+    public boolean writeTrustRoots(String directory) throws GeneralSecurityException, IOException {
+		String oldValue = System.getProperty("X509_CERT_DIR");
+		// use default if empty
+		if (directory == null) {
+			directory = oldValue;
+		}
+		// this is a workaround, directory must not exists.
+		if (this.bootStrap) {
+			System.setProperty("X509_CERT_DIR", directory);
+			File dir = new File(directory);
+			if (dir.exists()) {
+				List remaining = new LinkedList(Arrays.asList(dir.listFiles()));
+				while (!(remaining.isEmpty())) {
+					File f = (File) remaining.remove(0);
+					if (f.isDirectory())
+						remaining.addAll(Arrays.asList(f.listFiles()));
+					else
+						f.delete();
+				}
+				if (!(dir.delete())) {
+					throw new GeneralSecurityException(
+							"Could not clean directory:" + directory);
+				}
 
-        String oldValue = System.getProperty("X509_CERT_DIR");
-        // use default if empty
-        if (directory == null) directory = oldValue;
+			}
 
-        // this is a workaround, directory must not exists.
-        if (bootStrap) {
-            System.setProperty("X509_CERT_DIR", directory);
-            File dir = new File(directory);
-            if (dir.exists()) {
-                List<File> remaining = new LinkedList<File>(Arrays.asList(dir
-                        .listFiles()));
-                while (!remaining.isEmpty()) {
-                    File f = remaining.remove(0);
-                    if (f.isDirectory()) remaining.addAll(Arrays.asList(f
-                            .listFiles()));
-                    else f.delete();
-                }
-                if (!dir.delete()) {
-                    throw new MyProxyException("Could not clean directory:"
-                            + directory);
-                }
-            }
-        }
-        
-        // know we need to get the certificate to be able to get the list of all
+		}
+		// know we need to get the certificate to be able to get the list of all
         // certs.
-        getCredential();
-
-        // restore the property
-        System.setProperty("X509_CERT_DIR", oldValue);
-
-        // gather all certs
-        return myProxy.writeTrustRoots(directory);
-    }
+		getCredential();
+		// restore the property
+		System.setProperty("X509_CERT_DIR", oldValue);
+		// gather all CA certs
+		return this.myProxyLogon.writeTrustRoots(directory);
+	}
 
     @Override
     public String toString() {
@@ -474,8 +459,5 @@ public class CredentialConnection {
 			e.printStackTrace();
 		}
 	}
-
-
-
 
 }
