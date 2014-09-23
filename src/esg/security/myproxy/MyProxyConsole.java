@@ -113,7 +113,7 @@ public class MyProxyConsole {
 
 		}
 
-		GSSICredentialConnection conn = new GSSICredentialConnection(debug);
+		CredentialConnection conn = new CredentialConnection(debug);
 		// load properties if found
 		conn.loadProperties(propFile);
 
