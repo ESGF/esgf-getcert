@@ -5,7 +5,7 @@ This branch of esgf-getcert explores use MyProxyLogon of http://grid.ncsa.illino
 
 Also, this new implementation allows generate a getcert.jar smaller than MyProxy version getcert.jar.
 
-new getcert.jar with MyProxyLogon -> 229,7 kB
-old getcert.jar with MyProxy -> 2,5 MB
+  new getcert.jar with MyProxyLogon -> 229,7 kB                                                                            
+  old getcert.jar with MyProxy -> 2,5 MB
 
 This new version has been run succesfully in openJDK 6/7 and JDK7.
