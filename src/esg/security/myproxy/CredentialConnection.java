@@ -211,123 +211,120 @@ public class CredentialConnection {
     }
 
     public String setupFromOpenID(String oid) throws MalformedURLException,
-            IOException {
+    IOException {
     	setOpenID(oid);
-        setUsername(oid.substring(oid.lastIndexOf("/") + 1));
-        // try to parse the url (MalformedURLException)
-        URL url = new URL(oid);
-        
-        // try to get the page (IOException if it fails
-        InputStream in=null;
-        try{
-        	URLConnection conn = url.openConnection();
-        	in = conn.getInputStream();
-        }catch (SSLHandshakeException e){
-        	
-        	LOG.warn("SSLHandshakeException, removing SSLv3 and SSLv2Hello protocols");
-        	try {
+    	setUsername(oid.substring(oid.lastIndexOf("/") + 1));
+    	// try to parse the url (MalformedURLException)
+    	URL url = new URL(oid);
 
-        		SSLSocketFactory sslSocketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-        		SSLSocket sslSocket = (SSLSocket) sslSocketFactory.createSocket(url.getHost(), 443);
+    	// try to get the page (IOException if it fails
+    	InputStream in=null;
+    	try{
+    		URLConnection conn = url.openConnection();
+    		in = conn.getInputStream();
+    	}catch (SSLHandshakeException e){
 
-        		// Strip "SSLv3" from the current enabled protocols.
-        		String[] protocols = sslSocket.getEnabledProtocols();
-        		Set<String> set = new HashSet<String>();
-        		for (String s : protocols) {
-        			if (s.equals("SSLv3") || s.equals("SSLv2Hello")) {
-        				continue;
-        			}
-        			set.add(s);
-        		}
-        		sslSocket.setEnabledProtocols(set.toArray(new String[0]));
+    		LOG.warn("SSLHandshakeException, removing SSLv3 and SSLv2Hello protocols");
+    		try {
 
-        		//get openID xml
-        		PrintWriter out = new PrintWriter(
-        				new OutputStreamWriter(
-        						sslSocket.getOutputStream()));
-        		out.println("GET " + url.toString() + " HTTP/1.1");
-        	    out.println();
-        		out.flush();
+    			SSLSocketFactory sslSocketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+    			SSLSocket sslSocket = (SSLSocket) sslSocketFactory.createSocket(url.getHost(), 443);
 
-        		//read openid url content
-        		try {
-        			in = sslSocket.getInputStream();
-        			final BufferedReader reader = new BufferedReader(
-        					new InputStreamReader(in));
-        			
-        			//read headers
-        			boolean head=true;
-        			int headLen = 0;
-        			int contentLen=0;
-        			String line = null;
-        			line = reader.readLine();
-        			
-        			while (head==true & line!=null) {
-        				if(head){
-        					headLen = headLen+line.length();
-        					if(line.trim().equals("")){
-        						head=false;
-        					}else{
-        						String[] headers = line.trim().split(" ");
-        						if(headers[0].equals("Content-Length:")){
-        							contentLen = Integer.parseInt(headers[1]);
-        						}
-                				line = reader.readLine();
-        					}
-        				}
-        			}
-        			
-        			//read content
-        			char[] buffContent = new char[contentLen];
-        			reader.read(buffContent);
-                    reader.close();
-                    
-                    //make inpuStream for the content
-                    String content = new String(buffContent);
-            		in = new ByteArrayInputStream(content.getBytes());
-            		
-                } catch (final Exception e1) {
-                    e1.printStackTrace();
-                }
-        	} catch (IOException e1) {
-            	System.err.println("Can't parse OpenID: " + e.getMessage());
-        	}
+    			// Strip "SSLv3" from the current enabled protocols.
+    			String[] protocols = sslSocket.getEnabledProtocols();
+    			Set<String> set = new HashSet<String>();
+    			for (String s : protocols) {
+    				if (s.equals("SSLv3") || s.equals("SSLv2Hello")) {
+    					continue;
+    				}
+    				set.add(s);
+    			}
+    			sslSocket.setEnabledProtocols(set.toArray(new String[0]));
 
-        }
+    			//get openID xml
+    			PrintWriter out = new PrintWriter(
+    					new OutputStreamWriter(
+    							sslSocket.getOutputStream()));
+    			out.println("GET " + url.toString() + " HTTP/1.1");
+    			out.println();
+    			out.flush();
 
-        try {
-            // now get the info we need
-            Document doc = DocumentBuilderFactory.newInstance()
-                    .newDocumentBuilder().parse(in);
-            try {
-                if (debug) serialize(doc, System.out);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+    			//read openid url content
+    			in = sslSocket.getInputStream();
+    			final BufferedReader reader = new BufferedReader(
+    					new InputStreamReader(in));
 
-            XPath xpath = XPathFactory.newInstance().newXPath();
-            XPathExpression xpSocket = xpath.compile(XPATH);
+    			//read headers
+    			boolean head=true;
+    			int headLen = 0;
+    			int contentLen=0;
+    			String line = null;
+    			line = reader.readLine();
 
-            String myProxyServer = (String) xpSocket.evaluate(doc,
-                    XPathConstants.STRING);
-            String[] results = myProxyServer.split(":");
+    			while (head==true & line!=null) {
+    				if(head){
+    					headLen = headLen+line.length();
+    					if(line.trim().equals("")){
+    						head=false;
+    					}else{
+    						String[] headers = line.trim().split(" ");
+    						if(headers[0].equals("Content-Length:")){
+    							contentLen = Integer.parseInt(headers[1]);
+    						}
+    						line = reader.readLine();
+    					}
+    				}
+    			}
 
-            setHost(results[1].substring(2));
-            setPort(Integer.parseInt(results[2]));
+    			//read content
+    			char[] buffContent = new char[contentLen];
+    			reader.read(buffContent);
+    			reader.close();
 
-            return myProxyServer;
-        } catch (Exception e) {
-            // this file is unparsable log and done
-        	System.err.println("Coan't parse OpenID: " + e.getMessage());
-        }
+    			//make inpuStream for the content
+    			String content = new String(buffContent);
+    			in = new ByteArrayInputStream(content.getBytes());
 
-        // try to close the stream. Don't fail on this though.
-        try {
-            in.close();
-        } catch (IOException e) {
-        }
 
-        return null;
+    		} catch (Exception e1) {
+    			System.err.println("Can't parse OpenID: " + e.getMessage());
+    		}
+
+    	}
+
+    	try {
+    		// now get the info we need
+    		Document doc = DocumentBuilderFactory.newInstance()
+    				.newDocumentBuilder().parse(in);
+    		try {
+    			if (debug) serialize(doc, System.out);
+    		} catch (Exception e) {
+    			e.printStackTrace();
+    		}
+
+    		XPath xpath = XPathFactory.newInstance().newXPath();
+    		XPathExpression xpSocket = xpath.compile(XPATH);
+
+    		String myProxyServer = (String) xpSocket.evaluate(doc,
+    				XPathConstants.STRING);
+    		String[] results = myProxyServer.split(":");
+
+    		setHost(results[1].substring(2));
+    		setPort(Integer.parseInt(results[2]));
+
+    		return myProxyServer;
+    	} catch (Exception e) {
+    		// this file is unparsable log and done
+    		System.err.println("Coan't parse OpenID: " + e.getMessage());
+    	}
+
+    	// try to close the stream. Don't fail on this though.
+    	try {
+    		in.close();
+    	} catch (IOException e) {
+    	}
+
+    	return null;
     }
     
     private void setOpenID(String oid) {
