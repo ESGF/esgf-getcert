@@ -1,5 +1,7 @@
 package esg.security.myproxy;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -7,7 +9,10 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -16,10 +21,14 @@ import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
-
+import java.util.Set;
+import javax.net.ssl.SSLHandshakeException;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
@@ -202,53 +211,120 @@ public class CredentialConnection {
     }
 
     public String setupFromOpenID(String oid) throws MalformedURLException,
-            IOException {
+    IOException {
     	setOpenID(oid);
-        setUsername(oid.substring(oid.lastIndexOf("/") + 1));
-        // try to parse the url (MalformedURLException)
-        URL url = new URL(oid);
-        
-        // try to get the page (IOException if it fails)
-        URLConnection conn = url.openConnection();
-//        if (conn instanceof HttpsURLConnection) {
-//        	((HttpsURLConnection)conn).setSSLSocketFactory(factory);
-//        	((HttpsURLConnection)conn).setHostnameVerifier(hostname_verifier);
-//        }
-        InputStream in = conn.getInputStream();
+    	setUsername(oid.substring(oid.lastIndexOf("/") + 1));
+    	// try to parse the url (MalformedURLException)
+    	URL url = new URL(oid);
 
-        try {
-            // now get the info we need
-            Document doc = DocumentBuilderFactory.newInstance()
-                    .newDocumentBuilder().parse(in);
-            try {
-                if (debug) serialize(doc, System.out);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+    	// try to get the page (IOException if it fails
+    	InputStream in=null;
+    	try{
+    		URLConnection conn = url.openConnection();
+    		in = conn.getInputStream();
+    	}catch (SSLHandshakeException e){
 
-            XPath xpath = XPathFactory.newInstance().newXPath();
-            XPathExpression xpSocket = xpath.compile(XPATH);
+    		LOG.warn("SSLHandshakeException, removing SSLv3 and SSLv2Hello protocols");
+    		try {
 
-            String myProxyServer = (String) xpSocket.evaluate(doc,
-                    XPathConstants.STRING);
-            String[] results = myProxyServer.split(":");
+    			SSLSocketFactory sslSocketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+    			SSLSocket sslSocket = (SSLSocket) sslSocketFactory.createSocket(url.getHost(), 443);
 
-            setHost(results[1].substring(2));
-            setPort(Integer.parseInt(results[2]));
+    			// Strip "SSLv3" from the current enabled protocols.
+    			String[] protocols = sslSocket.getEnabledProtocols();
+    			Set<String> set = new HashSet<String>();
+    			for (String s : protocols) {
+    				if (s.equals("SSLv3") || s.equals("SSLv2Hello")) {
+    					continue;
+    				}
+    				set.add(s);
+    			}
+    			sslSocket.setEnabledProtocols(set.toArray(new String[0]));
 
-            return myProxyServer;
-        } catch (Exception e) {
-            // this file is unparsable log and done
-        	System.err.println("Coan't parse OpenID: " + e.getMessage());
-        }
+    			//get openID xml
+    			PrintWriter out = new PrintWriter(
+    					new OutputStreamWriter(
+    							sslSocket.getOutputStream()));
+    			out.println("GET " + url.toString() + " HTTP/1.1");
+    			out.println();
+    			out.flush();
 
-        // try to close the stream. Don't fail on this though.
-        try {
-            in.close();
-        } catch (IOException e) {
-        }
+    			//read openid url content
+    			in = sslSocket.getInputStream();
+    			final BufferedReader reader = new BufferedReader(
+    					new InputStreamReader(in));
 
-        return null;
+    			//read headers
+    			boolean head=true;
+    			int headLen = 0;
+    			int contentLen=0;
+    			String line = null;
+    			line = reader.readLine();
+
+    			while (head==true & line!=null) {
+    				if(head){
+    					headLen = headLen+line.length();
+    					if(line.trim().equals("")){
+    						head=false;
+    					}else{
+    						String[] headers = line.trim().split(" ");
+    						if(headers[0].equals("Content-Length:")){
+    							contentLen = Integer.parseInt(headers[1]);
+    						}
+    						line = reader.readLine();
+    					}
+    				}
+    			}
+
+    			//read content
+    			char[] buffContent = new char[contentLen];
+    			reader.read(buffContent);
+    			reader.close();
+
+    			//make inpuStream for the content
+    			String content = new String(buffContent);
+    			in = new ByteArrayInputStream(content.getBytes());
+
+
+    		} catch (Exception e1) {
+    			System.err.println("Can't parse OpenID: " + e.getMessage());
+    		}
+
+    	}
+
+    	try {
+    		// now get the info we need
+    		Document doc = DocumentBuilderFactory.newInstance()
+    				.newDocumentBuilder().parse(in);
+    		try {
+    			if (debug) serialize(doc, System.out);
+    		} catch (Exception e) {
+    			e.printStackTrace();
+    		}
+
+    		XPath xpath = XPathFactory.newInstance().newXPath();
+    		XPathExpression xpSocket = xpath.compile(XPATH);
+
+    		String myProxyServer = (String) xpSocket.evaluate(doc,
+    				XPathConstants.STRING);
+    		String[] results = myProxyServer.split(":");
+
+    		setHost(results[1].substring(2));
+    		setPort(Integer.parseInt(results[2]));
+
+    		return myProxyServer;
+    	} catch (Exception e) {
+    		// this file is unparsable log and done
+    		System.err.println("Coan't parse OpenID: " + e.getMessage());
+    	}
+
+    	// try to close the stream. Don't fail on this though.
+    	try {
+    		in.close();
+    	} catch (IOException e) {
+    	}
+
+    	return null;
     }
     
     private void setOpenID(String oid) {
@@ -459,5 +535,5 @@ public class CredentialConnection {
 			e.printStackTrace();
 		}
 	}
-
+	
 }
