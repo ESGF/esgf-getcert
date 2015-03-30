@@ -13,9 +13,11 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
@@ -26,6 +28,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
@@ -45,12 +48,12 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.w3c.dom.Document;
 
-import edu.uiuc.ncsa.MyProxy.MyProxyLogon;
+import esg.security.myproxy.MyProxyLogon;
 
 
 
 /**
- * Wraps the Wraps the edu.uiuc.ncsa.myproxy.MyProxyLogon. Everything here is cached, 
+ * Wraps the edu.uiuc.ncsa.myproxy.MyProxyLogon. Everything here is cached, 
  * so it is intended to be used only once.
  * @author  Estani
  * @author  Karem Terry
@@ -364,8 +367,23 @@ public class CredentialConnection {
 		MyProxyLogon myProxyLogon = getConnection();
 
 		LOG.debug("Retrieving credentials from the MyProxy server..");
-		myProxyLogon.getCredentials();
-		LOG.debug("done!");
+		try{
+			myProxyLogon.getCredentials();
+		}catch(SSLHandshakeException e){
+			//Avoid "CN doesn't match server name" issue: the OpenID indicates 
+			//that the MyProxy authentication service is located at some host and
+			//port (usually 7512), but then, this host and port, in some cases, 
+			//have a certificate with a subject that does not match the server host
+			//name (and without any alternative subject name). 
+			//Therefore, the SSL connection fails.
+			LOG.warn(e.getMessage());
+
+			//Replace host for its canonical host name
+			InetAddress inetAddress=InetAddress.getByName(myProxyLogon.getHost());
+			myProxyLogon.setHost(inetAddress.getCanonicalHostName());
+			myProxyLogon.getCredentials();
+		}
+		LOG.info("done!");
 
 		if (this.trustRoots) {
 			try {
