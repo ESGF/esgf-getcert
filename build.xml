@@ -45,6 +45,7 @@
     </delete>
     <echo message="Creating executable Jar ==> ${jar}"/>
     
+  	<!--<jar destfile="${build}/temp.jar" filesetmanifest="skip" excludes="**" includes="org/bouncycastle/asn1/**,org/bouncycastle/jce/**,org/bouncycastle/util/**,org/bouncycastle/LICENSE">-->
     <jar destfile="${build}/temp.jar" filesetmanifest="skip">
         <fileset dir="${build}"
                  includes="esg/**,**/*.properties,**/*filter-web.xml"
@@ -62,7 +63,66 @@
     </jar>
     <zip basedir="${build}" destfile="${jar}">
       <exclude name="temp.jar"/>
-      <zipfileset src="${build}/temp.jar" excludes="META-INF/*.SF, META-INF/*.DSA, META-INF/*.RSA"/>
+      <zipfileset src="${build}/temp.jar" excludes="META-INF/*.SF, META-INF/*.DSA, 
+      	META-INF/*.RSA, org/bouncycastle/crypto/**, org/bouncycastle/i18n/**, 
+      	org/bouncycastle/math/**, org/bouncycastle/mozilla/**, org/bouncycastle/ocsp/**,
+      	org/bouncycastle/openssl/**, org/bouncycastle/voms/**, org/bouncycastle/x509/**,
+      	org/bouncycastle/util/test/**, org/bouncycastle/util/Stream**, 
+      	org/bouncycastle/util/Store**, org/bouncycastle/util/Selec**, 
+      	org/bouncycastle/util/IP**, org/bouncycastle/util/Collec**, 
+      	org/bouncycastle/util/BigInt**, org/bouncycastle/util/AllT**, 
+      	org/bouncycastle/util/test/**, org/bouncycastle/util/encoders/Buff**, 
+      	org/bouncycastle/util/encoders/T**, org/bouncycastle/util/encoders/U**, 
+      	org/bouncycastle/util/encoders/HexTransla**, org/bouncycastle/jce/spec/**,
+      	org/bouncycastle/jce/provider/**, org/bouncycastle/jce/netscape/**,
+      	org/bouncycastle/jce/interfaces/**, org/bouncycastle/jce/exception/**,
+      	org/bouncycastle/jce/examples/**, org/bouncycastle/jce/X509V**,
+      	org/bouncycastle/jce/X509L**, org/bouncycastle/jce/X509K**,
+      	org/bouncycastle/jce/Pr**, org/bouncycastle/jce/PKCS7S**,
+      	org/bouncycastle/jce/M**, org/bouncycastle/jce/E**,
+      	org/bouncycastle/asn1/x500/**, org/bouncycastle/asn1/tsp/**,
+      	org/bouncycastle/asn1/smime/**, org/bouncycastle/asn1/sec/**,
+      	org/bouncycastle/asn1/ocsp/**, org/bouncycastle/asn1/ntt/**,
+      	org/bouncycastle/asn1/mozilla/**, org/bouncycastle/asn1/misc/**,
+      	org/bouncycastle/asn1/microsoft/**, org/bouncycastle/asn1/kisa/**,
+      	org/bouncycastle/asn1/isismtt/**, org/bouncycastle/asn1/icao/**,
+      	org/bouncycastle/asn1/iana/**, org/bouncycastle/asn1/gnu/**,
+      	org/bouncycastle/asn1/ess/**, org/bouncycastle/asn1/esf/**,
+      	org/bouncycastle/asn1/eac/**, org/bouncycastle/asn1/crmf/**,
+      	org/bouncycastle/asn1/cms/**, org/bouncycastle/asn1/cmp/**,
+      	org/bouncycastle/asn1/bc/**, org/bouncycastle/asn1/util/**
+      	org/bouncycastle/asn1/x509/sigi/**, org/bouncycastle/asn1/x509/qualified/**,
+      	org/bouncycastle/asn1/x509/V**, org/bouncycastle/asn1/x509/U**,
+      	org/bouncycastle/asn1/x509/T**, org/bouncycastle/asn1/x509/R**,
+      	org/bouncycastle/asn1/x509/P**, org/bouncycastle/asn1/x509/N**,
+      	org/bouncycastle/asn1/x509/K**, org/bouncycastle/asn1/x509/I**,
+      	org/bouncycastle/asn1/x509/H**, org/bouncycastle/asn1/x509/G**,
+      	org/bouncycastle/asn1/x509/E**, org/bouncycastle/asn1/x509/D**,
+      	org/bouncycastle/asn1/x509/C**, org/bouncycastle/asn1/x509/B**,
+      	org/bouncycastle/asn1/x509/SubjectK**, org/bouncycastle/asn1/x509/SubjectD**
+      	org/bouncycastle/asn1/x509/Au**, org/bouncycastle/asn1/x509/Att**,
+      	org/bouncycastle/asn1/x509/Acc**, org/bouncycastle/asn1/x509/O**,
+      	org/bouncycastle/asn1/x509/X509A**, org/bouncycastle/asn1/x509/X509Ext**,
+      	org/bouncycastle/asn1/x509/X509Cert**, org/bouncycastle/asn1/x9/X962*,
+      	org/bouncycastle/asn1/x9/X9I**, org/bouncycastle/asn1/x9/X9F**,
+      	org/bouncycastle/asn1/x9/X9E**, org/bouncycastle/asn1/x9/X9C**,
+      	org/bouncycastle/asn1/x9/O**, org/bouncycastle/asn1/x9/K**,
+      	org/bouncycastle/asn1/teletrust/TeleTrusTN**, org/bouncycastle/asn1/pkcs/S**,
+      	org/bouncycastle/asn1/pkcs/RSAP**, org/bouncycastle/asn1/pkcs/RSAE**,
+      	org/bouncycastle/asn1/pkcs/RC2**, org/bouncycastle/asn1/pkcs/PKCS1**,
+      	org/bouncycastle/asn1/pkcs/Pf**, org/bouncycastle/asn1/pkcs/PB**,
+      	org/bouncycastle/asn1/pkcs/M**, org/bouncycastle/asn1/pkcs/K**,
+      	org/bouncycastle/asn1/pkcs/I**, org/bouncycastle/asn1/pkcs/E**,
+      	org/bouncycastle/asn1/pkcs/D**, org/bouncycastle/asn1/pkcs/A**,
+      	org/bouncycastle/asn1/pkcs/Co**, org/bouncycastle/asn1/pkcs/CertB**,
+      	org/bouncycastle/asn1/oiw/E**, org/bouncycastle/asn1/nist/NISTN**,
+      	org/bouncycastle/asn1/cryptopro/G**, org/bouncycastle/asn1/cryptopro/E**,
+      	org/bouncycastle/asn1/DERSequenceG**, org/bouncycastle/asn1/DERInput**,
+      	org/bouncycastle/asn1/DERGenerato**, org/bouncycastle/asn1/DERConstructedS**,
+      	org/bouncycastle/asn1/BERSequenceG**, org/bouncycastle/asn1/BEROctectStringG**,
+      	org/bouncycastle/asn1/BERNull**, org/bouncycastle/asn1/BERI**,
+      	org/bouncycastle/asn1/BERG**, org/bouncycastle/asn1/BERConstructedS**,
+      	org/bouncycastle/asn1/AS1Gen**"/> 	
     </zip>
     <delete file="${build}/temp.jar"/>
   </target>
