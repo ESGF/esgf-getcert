@@ -14,14 +14,15 @@ import org.junit.Test;
  * @author Estani
  *
  */
-public class GSSICertificateConnectionTest {
+public class CertificateConnectionTest {
 
     /**
-     * Test method for {@link org.globus.esg.myproxy.GSSICredentialConnection#setupFromOpenID(java.lang.String)}.
+     * Test method for {@link org.globus.esg.myproxy.CredentialConnection#setupFromOpenID(java.lang.String)}.
      */
     @Test
     public void testSetupFromOpenID() {
-        GSSICredentialConnection conn = new GSSICredentialConnection(true);
+        CredentialConnection conn = CredentialConnection.getInstance();
+        conn.setDebug(true);
         try {
             conn.setupFromOpenID("hasdfttps://asldhlakjhs");
             fail("Malformed URL!");
@@ -55,14 +56,15 @@ public class GSSICertificateConnectionTest {
     }
 
     /**
-     * Test method for {@link org.globus.esg.myproxy.GSSICredentialConnection#getCredential()}.
+     * Test method for {@link org.globus.esg.myproxy.CredentialConnection#getCredential()}.
      * @throws Exception not expected 
      */
     public void testGetCertificate() throws Exception {
         System.setProperty("X509_CERT_DIR", "E:/certs/esg-certs");
         System.setProperty("X509_USER_PROXY", "E:/certs/certificate.pem");
         
-        GSSICredentialConnection conn = new GSSICredentialConnection(true);
+        CredentialConnection conn = CredentialConnection.getInstance();
+        conn.setDebug(true);
         conn.setupFromOpenID("https://ipcc-ar5.dkrz.de/myopenid/dkrzpub1");
         conn.setPassword("");
         conn.writeCertificate("E:/certs/certificate.pem");
@@ -70,14 +72,15 @@ public class GSSICertificateConnectionTest {
     }
 
     /**
-     * Test method for {@link org.globus.esg.myproxy.GSSICredentialConnection#writeTrustRoots(java.lang.String)}.
+     * Test method for {@link org.globus.esg.myproxy.CredentialConnection#writeTrustRoots(java.lang.String)}.
      * @throws Exception not expected 
      */
     public void testWriteTrustRoots() throws Exception {
         System.setProperty("X509_CERT_DIR", "E:/certs/esg-certs");
         System.setProperty("X509_USER_PROXY", "E:/certs/certificate.pem");
         
-        GSSICredentialConnection conn = new GSSICredentialConnection(true);
+        CredentialConnection conn = CredentialConnection.getInstance();
+        conn.setDebug(true);
         conn.setHost("ipcc-ar5.dkrz.de");
         conn.setPort(7512);
         conn.setUsername("dkrzpub1");
