@@ -40,6 +40,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -578,8 +579,21 @@ public class MyProxyLogon {
             }
             if (j >= 0) {
                 str = str.substring(j);
+
+                // Read String and remove white spaces
+                Scanner scanner = new Scanner(str);
+                StringBuilder stringBuilder = new StringBuilder();
+
+                while (scanner.hasNextLine()) {
+                    String line = scanner.nextLine();
+                    stringBuilder.append(line.trim());
+                    stringBuilder.append("\n");
+                }
+                scanner.close();
+
                 ByteArrayInputStream localByteArrayInputStream = new ByteArrayInputStream(
-                        str.getBytes());
+                        stringBuilder.toString().getBytes());
+
                 try {
                     X509Certificate localX509Certificate = (X509Certificate) localCertificateFactory
                             .generateCertificate(localByteArrayInputStream);
