@@ -6,8 +6,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
 
-import org.globus.myproxy.MyProxyException;
-
 import esg.security.myproxy.Arguments.Argument;
 import esg.security.myproxy.Arguments.InvalidArgumentException;
 
@@ -113,7 +111,8 @@ public class MyProxyConsole {
 
 		}
 
-		GSSICredentialConnection conn = new GSSICredentialConnection(debug);
+		CredentialConnection conn = CredentialConnection.getInstance();
+		conn.setDebug(debug);
 		// load properties if found
 		conn.loadProperties(propFile);
 
