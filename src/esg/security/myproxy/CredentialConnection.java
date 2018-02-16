@@ -222,6 +222,12 @@ public class CredentialConnection {
 
     	// try to get the page (IOException if it fails
     	InputStream in=null;
+        String esgtruststorefile=System.getProperty("user.home")+"/.esg/esg-truststore.ts";
+        File f = new File(esgtruststorefile);
+        if(f.exists()) {
+            System.setProperty("javax.net.ssl.trustStore",esgtruststorefile);
+        }
+    
     	try{
     		URLConnection conn = url.openConnection();
     		in = conn.getInputStream();
@@ -229,6 +235,12 @@ public class CredentialConnection {
 
     		LOG.warn("SSLHandshakeException, removing SSLv3 and SSLv2Hello protocols");
     		try {
+
+                if(!f.exists()) {
+                    System.out.println("Execute the following and retry:");
+                    System.out.println("wget -O ~/.esg/esg-truststore.ts --no-check-certificate https://github.com/ESGF/esgf-dist/raw/master/installer/certs/esg-truststore.ts");
+                    System.exit(-1);
+                 }
 
     			SSLSocketFactory sslSocketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
     			SSLSocket sslSocket = (SSLSocket) sslSocketFactory.createSocket(url.getHost(), 443);
