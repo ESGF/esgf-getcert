@@ -284,7 +284,7 @@ public class MyProxyLogon {
                 .getSocketFactory();
         this.socket = ((SSLSocket) localSSLSocketFactory.createSocket(
                 this.host, this.port));
-        this.socket.setEnabledProtocols(new String[] { "TLSv1" });
+        this.socket.setEnabledProtocols(new String[] { "TLSv1.2" });
 
         this.socket.startHandshake();
 
